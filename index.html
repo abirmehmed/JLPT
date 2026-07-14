@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>語彙 · Japanese Vocabulary Quiz</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="seal">語</div>
+<header>
+  <h1>Vocabulary Quiz</h1>
+  <div class="sub">word · kana · romaji · meaning</div>
+</header>
+
+<!-- SETUP SCREEN -->
+<div class="panel" id="setupScreen">
+  <label class="field-label">Alphabet (kana)</label>
+  <div class="row" style="margin-top:0;">
+    <button class="mode-btn" data-jlpt="hiragana"><strong>ひらがな Hiragana</strong><span>104 characters</span></button>
+    <button class="mode-btn" data-jlpt="katakana"><strong>カタカナ Katakana</strong><span>104 characters</span></button>
+  </div>
+  <div class="hint" style="margin:6px 0 18px;">New to Japanese? Start here — learn the writing system before moving on to vocabulary below.</div>
+
+  <label class="field-label">JLPT level <span style="font-weight:400;text-transform:none;letter-spacing:0;">(vocabulary, once you know your kana)</span></label>
+  <div class="row" style="margin-top:0;">
+    <button class="mode-btn" data-jlpt="5"><strong>N5</strong><span>~720 words</span></button>
+    <button class="mode-btn" data-jlpt="4"><strong>N4</strong><span>~670 words</span></button>
+    <button class="mode-btn" data-jlpt="3"><strong>N3</strong><span>~2,140 words</span></button>
+  </div>
+  <div class="row">
+    <button class="mode-btn" data-jlpt="2"><strong>N2</strong><span>~1,750 words</span></button>
+    <button class="mode-btn" data-jlpt="1"><strong>N1</strong><span>~2,700 words</span></button>
+    <button class="mode-btn" data-jlpt="custom"><strong>My own list</strong><span>paste below</span></button>
+  </div>
+  <div class="row">
+    <button class="mode-btn" data-jlpt="5-3"><strong>N5–N3</strong><span>beginner-intermediate</span></button>
+    <button class="mode-btn" data-jlpt="5-1"><strong>N5–N1</strong><span>all levels, ~8,000 words</span></button>
+  </div>
+
+  <!-- Custom paste (always visible, additive unless "My own list" selected) -->
+  <div style="margin-top:18px;">
+    <label class="field-label">Custom word list
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px;">
+        (optional — adds to or replaces the JLPT set above)</span>
+    </label>
+    <textarea id="dataInput" placeholder="word,kana,meaning
+学校,がっこう,school
+勉強,べんきょう,study"></textarea>
+    <div class="hint">One entry per line: <b>Word, Kana reading, Meaning</b> — romaji is generated automatically</div>
+  </div>
+  <div id="parseError" class="error-box hidden"></div>
+
+  <!-- Quiz direction -->
+  <div style="margin-top:20px;">
+    <label class="field-label">Quiz direction</label>
+    <div class="row" style="margin-top:0;">
+      <button class="mode-btn selected" data-mode="meaning">
+        <strong>Word → meaning</strong>
+        <span>See word, pick meaning</span>
+      </button>
+      <button class="mode-btn" data-mode="word">
+        <strong>Meaning → word</strong>
+        <span>See meaning, pick word</span>
+      </button>
+      <button class="mode-btn" data-mode="mixed">
+        <strong>Mixed</strong>
+        <span>Random both directions</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Range picker -->
+  <div class="range-section">
+    <label class="field-label">Word range <span style="font-weight:400;text-transform:none;letter-spacing:0;">(pick a slice of the list to practice)</span></label>
+    <div class="range-row">
+      <span>From word</span>
+      <input type="number" id="rangeFrom" min="1" value="1">
+      <span>to word</span>
+      <input type="number" id="rangeTo" min="1" value="50">
+      <span id="totalWordsNote" style="color:#9a9182;font-size:12px;"></span>
+    </div>
+    <div class="range-preview" id="rangePreview"></div>
+  </div>
+
+  <!-- Round size -->
+  <div class="count-row" style="margin-top:14px;">
+    <label class="field-label" style="margin-bottom:0;">Cards per round</label>
+    <input type="number" id="roundCount" min="3" max="200" value="20">
+    <span style="color:#9a9182;font-size:12px;">(random sample from your range)</span>
+  </div>
+
+  <!-- View list -->
+  <button class="view-list-btn" id="viewListBtn" disabled>📋 Browse / search word list</button>
+
+  <button class="primary-btn" id="startBtn" disabled>Start quiz</button>
+</div>
+
+<!-- WORD LIST PANEL -->
+<div class="panel hidden" id="listScreen">
+  <div class="list-toolbar">
+    <input class="list-search" type="text" id="listSearch" placeholder="Search word, kana, romaji, or meaning…">
+    <button class="ghost-btn" id="closeListBtn">✕ Close</button>
+  </div>
+  <div class="list-table-wrap">
+    <table>
+      <thead><tr>
+        <th class="num">#</th>
+        <th>Word</th>
+        <th>Reading</th>
+        <th>Meaning</th>
+      </tr></thead>
+      <tbody id="listBody"></tbody>
+    </table>
+  </div>
+  <div style="margin-top:12px;font-size:12px;color:#9a9182;" id="listCount"></div>
+</div>
+
+<!-- QUIZ SCREEN -->
+<div class="panel hidden" id="quizScreen">
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="stat-strip">
+    <span>Card <b id="cardIndex">1</b> / <b id="cardTotal">20</b></span>
+    <span>Correct <b id="liveCorrect">0</b> &nbsp;·&nbsp; Missed <b id="liveWrong">0</b></span>
+  </div>
+  <div class="prompt-card">
+    <div class="prompt-label" id="promptLabel">What does this mean?</div>
+    <div class="prompt-main" id="promptMain">こんにちは</div>
+    <div class="prompt-sub" id="promptSub"></div>
+  </div>
+  <div class="options" id="optionsList"></div>
+  <div class="next-row">
+    <button class="next-btn" id="nextBtn" disabled>Next →</button>
+  </div>
+</div>
+
+<!-- RESULTS SCREEN -->
+<div class="panel hidden" id="resultsScreen">
+  <div class="score-circle">
+    <div class="pct" id="finalPct">0%</div>
+    <div class="lbl">accuracy</div>
+  </div>
+  <div style="text-align:center;font-size:13px;color:#8a8276;margin-bottom:4px;" id="finalSummary"></div>
+  <div class="miss-list">
+    <div class="field-label" style="text-align:center;">Words to review</div>
+    <div id="missContainer"></div>
+  </div>
+  <div class="row" style="margin-top:24px;">
+    <button class="ghost-btn" id="retryMissedBtn" style="flex:1;">Retry missed words</button>
+    <button class="ghost-btn" id="restartBtn" style="flex:1;">New round</button>
+  </div>
+</div>
+
+<footer>missed words are requeued and resurface before the round ends</footer>
+
+
+<!-- JLPT_DATA must load before app.js. Loaded as a plain <script src>
+     (not fetch/JSON) so this still works when opened directly via
+     file:// — fetch() of local files is blocked by CORS there. -->
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
